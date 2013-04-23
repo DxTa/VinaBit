@@ -15,3 +15,5 @@
 *.exe
 *.out
 *.app
+tcpcliserv/tcpcli
+tcpcliserv/tcpserv
