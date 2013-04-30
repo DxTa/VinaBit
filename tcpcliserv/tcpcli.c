@@ -1,8 +1,11 @@
 #include	"unp.h"
 #include "data.c"
+#include "time.h"
 
 int main(int argc, char **argv)
 {
+	time_t startTime,now;
+	int duration;
 	int					sockfd;
 	struct sockaddr_in	servaddr;
 	ssize_t		n;
@@ -29,31 +32,25 @@ int main(int argc, char **argv)
 
 		Writen(sockfd, sendline, strlen(sendline));
 
-		if (Readline(sockfd, recvline, MAXLINE) == 0)
+		if (read(sockfd, recvline, MAXLINE) <= 0)
 			err_quit("str_cli: server terminated prematurely");
-
-		Fputs(recvline, stdout);
 		getResponse(res,recvline);
+		Fputs(res->message, stdout);
 		if (res->b == true)
 			break;
 	}
 
-	write(sockfd,"AC_GET_FIRST_INFO\n",18);
-	while (n = read(sockfd, recvline, MAXLINE) > 0) {
-		Fputs(recvline, stdout);
-		getResponse(res,recvline);
-		if (res->b == true) {
-			/* write(sockfd,"AC_HEARING\n",11); */
-			break;
-		}
-	}
-	if (n < 0)
-		err_sys("str_echo: read error");
+	/* biding */
+	while (Fgets(sendline, MAXLINE, stdin) != NULL) {
+		Writen(sockfd, sendline, strlen(sendline));
+		if (read(sockfd, recvline, MAXLINE) <= 0)
+			err_quit("str_cli: server terminated prematurely");
 
-	/* while ( n = read(sockfd, recvline, MAXLINE) > 0) { */
-		/* Fputs(recvline, stdout); */
-		/* write(sockfd,"AC_HEARING\n",11); */
-	/* } */
+		getResponse(res,recvline);
+		Fputs(res->message, stdout);
+		if (res->b == false)
+			printf("Your bid is failed!\n");
+	}
 
 	exit(0);
 }

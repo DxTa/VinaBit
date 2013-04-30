@@ -53,6 +53,8 @@ Action toAction(char* s) {
 		return AC_LOGOUT;
 	else if (strncmp(s,"AC_HEARING",strlen("AC_HEARING")) == 0)
 		return AC_HEARING;
+	else if (strncmp(s,"AC_BID",strlen("AC_BID")) == 0)
+		return AC_BID;
 	else if (strncmp(s,"AC_GET_INFO_OF_CUR_BID",strlen("AC_GET_INFO_OF_CUR_BID")) == 0)
 		return AC_GET_INFO_OF_CUR_BID;
 	else if (strncmp(s,"AC_GET_FIRST_INFO",strlen("AC_GET_FIRST_INFO")) == 0)
@@ -85,7 +87,7 @@ void addHeader(Response* r, char* h) {
 
 int responseToString(Response* r, char* buf) {
 	char header[MAXLINE*10];
-	sprintf(header,"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",r->header[0],r->header[1],r->header[2],r->header[3],r->header[4],r->header[5],r->header[6],r->header[7],r->header[8],r->header[9]);
+	sprintf(header," %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",r->header[0],r->header[1],r->header[2],r->header[3],r->header[4],r->header[5],r->header[6],r->header[7],r->header[8],r->header[9]);
 	sprintf(buf,"%s;%s;%s\n",r->b ? "true" : "false",header,r->message);
 	return strlen(buf);
 }
@@ -95,18 +97,18 @@ void getResponse(Response* r,char* s) {
 	int count = 0;
 	resetResponse(r);
 
-	tok = strtok(s,",;\n");
+	tok = strtok(s,",;");
 	while(tok != NULL) {
 		if (count == 0) {
 			if (strcmp(tok,"true") == 0)
 				r->b = true;
 			else r->b = false;
-		} else if (0 < count && count < 11) {
+		} else if (0 < count && count < 10) {
 			addHeader(r,strdup(tok));
-		} else if (count > 10) {
+		} else if (count >= 10) {
 			strcpy(r->message,strdup(tok));
 		}
-		tok=strtok(NULL,",;\n");
+		tok=strtok(NULL,",;");
 		count++;
 	}
 	return;
