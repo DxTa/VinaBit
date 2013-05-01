@@ -158,11 +158,7 @@ void doprocessing (int sock)
 				break;
 			case AC_GET_CURRENT_PRODUCT:
 				if (id < 0) break;
-				if (*current_product < PRODUCT_NO) {
-					sprintf(res_str,"val=\"%d\"",*current_product);
-				} else {
-					sprintf(res_str,"\nDo not have any product to bid!\n");
-				}
+				sprintf(res_str,"val=\"%d\"",*current_product);
 				res->b = true;
 				strcpy(res->message,res_str);
 				clearString(res_str);
@@ -223,7 +219,7 @@ int initBid() {
 	strcpy(products[0].max_bid,"100.00");
 	strcpy(products[0].current_bid,"10.00");
 	products[0].userId = -1;
-	products[0].duration = 10;
+	products[0].duration = 30;
 	*current_product = 0;
 	*noCli = 0;
 

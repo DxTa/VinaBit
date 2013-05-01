@@ -111,19 +111,20 @@ int main(int argc, char **argv)
 				}
 			} while(temp == NULL);
 			*remainingTime = atoi(temp);
-			if (timeout(*remainingTime + 1) == 0) {
+			if (timeout(*remainingTime) == 0) {
 				/* update new information */
 				//pause while loop for *remainingTime + 1 seconds
 				do { //to make sure previous product is out dated
-					do {
-						Writen(sockfdtime, "AC_GET_CURRENT_PRODUCT\n", 23);
-						clearString(recvline);
-						if (read(sockfdtime, recvline, MAXLINE) <= 0)
-							errorQuit();
-						getResponse(res,recvline);
-						temp = getValOfStr("val",res->message);
-					} while(temp == NULL);
-					current_product = atoi(temp);
+					if (timeout(1) == 0) {
+						do {
+							Writen(sockfdtime, "AC_GET_CURRENT_PRODUCT\n", 23);
+							clearString(recvline);
+							if (read(sockfdtime, recvline, MAXLINE) <= 0)
+								errorQuit();
+							getResponse(res,recvline);
+							temp = getValOfStr("val",res->message);
+						} while(temp == NULL);
+					}
 				} while (current_product == atoi(temp));
 				prev_product = current_product;
 				current_product = atoi(temp);
@@ -136,15 +137,17 @@ int main(int argc, char **argv)
 					getResponse(res,recvline);
 					Fputs(res->message, stdout);
 				} while (strncmp(res->message,"NULL",strlen("NULL")) == 0 || res->b == false);
-				printf("Getting new product info ....\n");
 				do {
-					sprintf(sendline,"AC_GET_PRODUCT_INFO val=\"%d\"\n",current_product);
-					Writen(sockfdtime, sendline, strlen(sendline));
-					clearString(recvline);
-					if (read(sockfdtime, recvline, MAXLINE) <= 0)
-						errorQuit();
-					getResponse(res,recvline);
-					Fputs(res->message, stdout);
+					if (timeout(2) == 0) {
+						printf("Getting new product info ....\n");
+						sprintf(sendline,"AC_GET_PRODUCT_INFO val=\"%d\"\n",current_product);
+						Writen(sockfdtime, sendline, strlen(sendline));
+						clearString(recvline);
+						if (read(sockfdtime, recvline, MAXLINE) <= 0)
+							errorQuit();
+						getResponse(res,recvline);
+						/* Fputs(res->message, stdout); */
+					}
 				} while (strncmp(res->message,"NULL",strlen("NULL")) == 0 || res->b == false);
 			}
 		}
