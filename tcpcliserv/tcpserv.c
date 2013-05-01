@@ -11,15 +11,6 @@
 #define MAX_USER 50
 #define PRODUCT_NO 1
 
-int timeout ( int seconds )
-{
-    clock_t endwait;
-    endwait = clock () + seconds * CLOCKS_PER_SEC ;
-    while (clock() < endwait) {}
-
-    return  0;
-}
-
 typedef struct Product {
 	char name[50];
 	bool isSold;
@@ -75,32 +66,39 @@ void doprocessing (int sock)
 	char res_str[MAXLINE*20];
 	bool isLoggedIn = false;
 	int id = -1;
-	int len;
+	int len,i,j;
+	float mbid;
 	Response* res;
 	res = initResponse();
 	(*noCli)++;
-	printf("------%d--------\n",*noCli);
-	while ( (n = read(sock, buf, MAXLINE)) > 0 || (n < 0 && errno == EINTR))
+	/* printf("------%d--------\n",*noCli); */
+	while (((n = read(sock, buf, MAXLINE)) > 0 || (n < 0 && errno == EINTR)))
 	{
 		now = time(NULL);
 		resetResponse(res);
 		clearString(res_str);
+		clearString(res->message);
 		switch(toAction(buf)) {
 			case AC_LOGIN:
-				temp = getValOfActionStr("name",buf);
+				if((temp = getValOfStr("name",buf)) == NULL)
+					goto LINE185;
 				id = findConnectedUserByName(temp);
 				if (id<0)
 					id = addNewConnectedUser(temp);
 				if (id >= 0) {
 					isLoggedIn = true;
 					res->b = true;
-					sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
-							products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
-							products[*current_product].max_bid, products[*current_product].current_bid,
-							cus->length,
-							products[*current_product].userId == -1 ? "NULL" : cus->connectedUsers[products[*current_product].userId].name,
-							*remainingTime
-						   );
+					if (*current_product < PRODUCT_NO) {
+						sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
+								products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
+								products[*current_product].max_bid, products[*current_product].current_bid,
+								cus->length,
+								products[*current_product].userId == -1 ? "NULL" : cus->connectedUsers[products[*current_product].userId].name,
+								*remainingTime
+							   );
+					} else {
+						sprintf(res_str,"\nDo not have any product to bid!\n");
+					}
 					strcpy(res->message,res_str);
 					clearString(res_str);
 				}
@@ -109,36 +107,106 @@ void doprocessing (int sock)
 				write(sock, res_str, len);
 				break;
 			case AC_LOGOUT:
+				if (id < 0) break;
 				printf("%s is disconnected\n",cus->connectedUsers[id].name);
 				res->b = true;
-				strcpy(res->message,"you are disconected");
+				strcpy(res->message,"DISCONNECTED");
 				isLoggedIn = false;
 				len = responseToString(res,res_str);
 				write(sock, res_str, len);
 				return;
 			case AC_BID:
-				temp = getValOfActionStr("val",buf);
-				now = time(NULL);
-				res->b = true;
-				sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
-						products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
-						products[*current_product].max_bid, products[*current_product].current_bid,
-						cus->length,
-						products[*current_product].userId == -1 ? "NULL" : cus->connectedUsers[products[*current_product].userId].name,
-						*remainingTime
-					   );
+				if (id < 0) break;
+				if((temp = getValOfStr("val",buf)) == NULL)
+					goto LINE185;
+				if (*current_product < PRODUCT_NO) {
+					mbid = atof(temp)- atof(products[*current_product].current_bid);
+					if (atof(products[*current_product].min_bid) < mbid && mbid < atof(products[*current_product].max_bid)) {
+						strcpy(products[*current_product].current_bid,temp);
+						products[*current_product].userId = id;
+					}
+					res->b = true;
+					sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
+							products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
+							products[*current_product].max_bid, products[*current_product].current_bid,
+							cus->length,
+							products[*current_product].userId == -1 ? "NULL" : cus->connectedUsers[products[*current_product].userId].name,
+							*remainingTime
+						   );
+				} else {
+					res->b = true;
+					sprintf(res_str,"\nDo not have any product to bid!\n");
+				}
+
 				strcpy(res->message,res_str);
 				clearString(res_str);
 				len = responseToString(res,res_str);
 				write(sock, res_str, len);
 				break;
+			case AC_GET_REMAINING_TIME:
+				if (id < 0) break;
+				if (*current_product < PRODUCT_NO) {
+					sprintf(res_str,"val=\"%d\"",*remainingTime);
+				} else {
+					sprintf(res_str,"\nDo not have any product to bid!\n");
+				}
+				res->b = true;
+				strcpy(res->message,res_str);
+				clearString(res_str);
+				len = responseToString(res,res_str);
+				write(sock, res_str, len);
+				break;
+			case AC_GET_CURRENT_PRODUCT:
+				if (id < 0) break;
+				if (*current_product < PRODUCT_NO) {
+					sprintf(res_str,"val=\"%d\"",*current_product);
+				} else {
+					sprintf(res_str,"\nDo not have any product to bid!\n");
+				}
+				res->b = true;
+				strcpy(res->message,res_str);
+				clearString(res_str);
+				len = responseToString(res,res_str);
+				write(sock, res_str, len);
+				break;
+			case AC_GET_PRODUCT_INFO:
+				if (id < 0) break;
+				if((temp = getValOfStr("val",buf)) == NULL)
+					goto LINE185;
+				res->b = true;
+				i = atoi(temp);
+				if (i < 0 || i >= PRODUCT_NO) {
+					sprintf(res_str,"NULL\n");
+				} else {
+					if (i == *current_product) {
+						sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
+								products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
+								products[*current_product].max_bid, products[*current_product].current_bid,
+								cus->length,
+								products[*current_product].userId == -1 ? "NULL" : cus->connectedUsers[products[*current_product].userId].name,
+								*remainingTime
+							   );
+					} else {
+						sprintf(res_str,"\nProduct name: %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent Winner: %s\n",
+								products[i].name,products[i].start_bid,products[i].min_bid,
+								products[i].max_bid, products[i].current_bid,
+								cus->length,
+								products[i].userId == -1 ? "NULL" : cus->connectedUsers[products[i].userId].name
+							   );
+					}
+				}
+				strcpy(res->message,res_str);
+				clearString(res_str);
+				len = responseToString(res,res_str);
+				write(sock, res_str, len);
+				break;
+LINE185:
 			default:
 				res->b = false;
 				strcpy(res->message,"your message is in wrong format");
 				len = responseToString(res,res_str);
 				write(sock, res_str, len);
 				break;
-
 		}
 	}
 	(*noCli)--;
@@ -151,11 +219,11 @@ int initBid() {
 	strcpy(products[0].name,"fixie");
 	products[0].isSold = false;
 	strcpy(products[0].start_bid,"10.00");
-	strcpy(products[0].min_bid,"10.00");
+	strcpy(products[0].min_bid,"4.00");
 	strcpy(products[0].max_bid,"100.00");
 	strcpy(products[0].current_bid,"10.00");
 	products[0].userId = -1;
-	products[0].duration = 3000;
+	products[0].duration = 10;
 	*current_product = 0;
 	*noCli = 0;
 
@@ -177,18 +245,19 @@ int main(int argc, char **argv)
 	remainingTime = shmat(remainingTime_shm_id,NULL,0);
 	time_t now,start;
 
-	int					listenfd, connfd;
+	int					listenfd, connfd, on;
 	pid_t				childpid;
 	socklen_t			clilen;
 	struct sockaddr_in	cliaddr, servaddr;
 	void				sig_chld(int);
 
 	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
+	setsockopt( listenfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on) );
 
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family      = AF_INET;
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	servaddr.sin_port        = htons(SERV_PORT);
+	servaddr.sin_port        = htons(6666);
 
 	Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
 
@@ -210,6 +279,8 @@ int main(int argc, char **argv)
 				} else {
 					*remainingTime = rmt;
 				}
+				if (*current_product >= PRODUCT_NO)
+					exit(0);
 			}
 		}
 	} else {

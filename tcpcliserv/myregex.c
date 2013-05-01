@@ -37,7 +37,7 @@ char* match_regex (regex_t * r, char * to_match)
         int i = 0;
         int nomatch = regexec (r, p, n_matches, m, 0);
         if (nomatch) {
-            printf ("No more matches.\n");
+            /* printf ("No more matches.\n"); */
             return NULL;
         }
         for (i = 0; i < n_matches; i++) {

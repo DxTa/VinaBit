@@ -24,6 +24,9 @@ typedef enum {
 	AC_GET_INFO_OF_CUR_BID,
 	AC_GET_FIRST_INFO,
 	AC_HEARING,
+	AC_GET_REMAINING_TIME,
+	AC_GET_CURRENT_PRODUCT,
+	AC_GET_PRODUCT_INFO,
 	AC_UNKNOWN,
 } Action;
 
@@ -41,6 +44,12 @@ char* getMessage(Action a) {
 			return "AC_GET_FIRST_INFO";
 		case AC_HEARING:
 			return "AC_HEARING";
+		case AC_GET_REMAINING_TIME:
+			return "AC_GET_REMAINING_TIME";
+		case AC_GET_CURRENT_PRODUCT:
+			return "AC_GET_CURRENT_PRODUCT";
+		case AC_GET_PRODUCT_INFO:
+			return "AC_GET_PRODUCT_INFO";
 		default:
 			return NULL;
 	}
@@ -59,6 +68,12 @@ Action toAction(char* s) {
 		return AC_GET_INFO_OF_CUR_BID;
 	else if (strncmp(s,"AC_GET_FIRST_INFO",strlen("AC_GET_FIRST_INFO")) == 0)
 		return AC_GET_FIRST_INFO;
+	else if (strncmp(s,"AC_GET_REMAINING_TIME",strlen("AC_GET_REMAINING_TIME")) == 0)
+		return AC_GET_REMAINING_TIME;
+	else if (strncmp(s,"AC_GET_CURRENT_PRODUCT",strlen("AC_GET_CURRENT_PRODUCT")) == 0)
+		return AC_GET_CURRENT_PRODUCT;
+	else if (strncmp(s,"AC_GET_PRODUCT_INFO",strlen("AC_GET_PRODUCT_INFO")) == 0)
+		return AC_GET_PRODUCT_INFO;
 	else return AC_UNKNOWN;
 }
 
@@ -114,7 +129,7 @@ void getResponse(Response* r,char* s) {
 	return;
 }
 
-char* getValOfActionStr(char* k,char* s) {
+char* getValOfStr(char* k,char* s) {
 	regex_t regex;
 	char regex_text[MAXLINE];
 	sprintf(regex_text,"%s%s",k,"=\"(.*)\"");
@@ -123,4 +138,13 @@ char* getValOfActionStr(char* k,char* s) {
 	rs = match_regex(&regex,s);
 	regfree(&regex);
 	return rs;
+}
+
+int timeout ( int seconds )
+{
+	clock_t endwait;
+	endwait = clock () + seconds * CLOCKS_PER_SEC ;
+	while (clock() < endwait) {}
+
+	return  0;
 }
