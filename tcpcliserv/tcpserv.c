@@ -81,7 +81,7 @@ void doprocessing (int sock)
 		switch(toAction(buf)) {
 			case AC_LOGIN:
 				if((temp = getValOfStr("name",buf)) == NULL)
-					goto LINE185;
+					goto LINE199;
 				id = findConnectedUserByName(temp);
 				if (id<0)
 					id = addNewConnectedUser(temp);
@@ -118,7 +118,7 @@ void doprocessing (int sock)
 			case AC_BID:
 				if (id < 0) break;
 				if((temp = getValOfStr("val",buf)) == NULL)
-					goto LINE185;
+					goto LINE199;
 				if (*current_product < PRODUCT_NO) {
 					mbid = atof(temp)- atof(products[*current_product].current_bid);
 					if (atof(products[*current_product].min_bid) < mbid && mbid < atof(products[*current_product].max_bid)) {
@@ -168,7 +168,7 @@ void doprocessing (int sock)
 			case AC_GET_PRODUCT_INFO:
 				if (id < 0) break;
 				if((temp = getValOfStr("val",buf)) == NULL)
-					goto LINE185;
+					goto LINE199;
 				res->b = true;
 				i = atoi(temp);
 				if (i < 0 || i >= PRODUCT_NO) {
@@ -196,7 +196,7 @@ void doprocessing (int sock)
 				len = responseToString(res,res_str);
 				write(sock, res_str, len);
 				break;
-LINE185:
+LINE199:
 			default:
 				res->b = false;
 				strcpy(res->message,"your message is in wrong format");
