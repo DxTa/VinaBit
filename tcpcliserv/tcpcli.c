@@ -146,7 +146,9 @@ int main(int argc, char **argv)
 						if (read(sockfdtime, recvline, MAXLINE) <= 0)
 							errorQuit();
 						getResponse(res,recvline);
-						/* Fputs(res->message, stdout); */
+						if (strncmp(res->message,"NULL",strlen("NULL")) != 0) {
+							Fputs(res->message, stdout);
+						}
 					}
 				} while (strncmp(res->message,"NULL",strlen("NULL")) == 0 || res->b == false);
 			}
