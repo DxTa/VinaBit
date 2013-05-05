@@ -29,6 +29,11 @@ void errorQuit() {
 int main(int argc, char **argv)
 {
 
+	struct pollfd fds;
+	int ret;
+	fds.fd = 0; /* this is STDIN */
+	fds.events = POLLIN;
+
 	/* share memory */
 	int name_shm_id = shmget(IPC_PRIVATE,sizeof(char)*50,0600);
 	name = shmat(name_shm_id,NULL,0);
@@ -51,14 +56,20 @@ int main(int argc, char **argv)
 	struct sockaddr_in	servaddr;
 	ssize_t		n;
 	char	sendline[MAXLINE], recvline[MAXLINE], *temp;
-	int len;
+	int len,i;
+	bool print = argv[2];
 	Response* res;
 	res = initResponse();
 
-	if (argc != 2)
-		err_quit("usage: tcpcli <IPaddress>");
+	if (argc < 2)
+		err_quit("usage: tcpcli <IPaddress> [print=true]");
 
-	if ((childpid = Fork()) == 0) { //time counter
+	if ((childpid = Fork()) == 0) { //time counter (process con)
+
+		struct timespec tim;
+		tim.tv_sec = 1;
+		tim.tv_nsec = 0;
+
 		sockfdtime = Socket(AF_INET, SOCK_STREAM, 0);
 
 		bzero(&servaddr, sizeof(servaddr));
@@ -69,92 +80,70 @@ int main(int argc, char **argv)
 		Connect(sockfdtime, (SA *) &servaddr, sizeof(servaddr));
 
 		/* authenticate */
+		// do client co 2 ket noi den server (2process) nen ca 2 ket not nay can duoc login vao server
+		// process con nay se duoc login vao khi process me login vao truoc
+		// tuc la khi ton tai *isConnected = true
 		while (true) {
-			if (timeout(1) == 0) {
-				if (*isLoggedOut == true)
-					exit(0);
-				if (*isConnected == false)
-					continue;
-				clearString(recvline);
-				sprintf(sendline,"AC_LOGIN name=\"%s\"\n",name);
-				Writen(sockfdtime, sendline, strlen(sendline));
+			nanosleep(&tim,NULL);
+			if (*isLoggedOut == true)
+				exit(0);
+			if (*isConnected == false)
+				continue;
+			clearString(recvline);
+			sprintf(sendline,"AC_LOGIN name=\"%s\"\n",name);
+			Writen(sockfdtime, sendline, strlen(sendline));
 
-				if (read(sockfdtime, recvline, MAXLINE) <= 0)
-					errorQuit();
-				getResponse(res,recvline);
-				if (res->b == true)
-					break;
-			}
+			if (read(sockfdtime, recvline, MAXLINE) <= 0)
+				errorQuit();
+			getResponse(res,recvline);
+			if (res->b == true)
+				break;
 		}
+		//sau khi login sau thi cung cap nhat id product hien thoi request dc tu phia server
 		do {
-			if (timeout(1) == 0) {
-				Writen(sockfdtime, "AC_GET_CURRENT_PRODUCT\n", 23);
-				clearString(recvline);
-				if (read(sockfdtime, recvline, MAXLINE) <= 0)
-					errorQuit();
-				getResponse(res,recvline);
-				temp = getValOfStr("val",res->message);
-			}
+			nanosleep(&tim,NULL);
+			Writen(sockfdtime, "AC_GET_CURRENT_PRODUCT\n", 23);
+			clearString(recvline);
+			if (read(sockfdtime, recvline, MAXLINE) <= 0)
+				errorQuit();
+			getResponse(res,recvline);
+			temp = getValOfStr("val",res->message);
 		} while(temp == NULL);
 		current_product = atoi(temp);
 
 		/* time sync with server */
+		i = 0;
 		while(true) {
-			do {
-				if (timeout(1) == 0) {
-					Writen(sockfdtime, "AC_GET_REMAINING_TIME\n", 22);
-					clearString(recvline);
-					if (read(sockfdtime, recvline, MAXLINE) <= 0)
-						errorQuit();
-					getResponse(res,recvline);
-					temp = getValOfStr("val",res->message);
-				}
-			} while(temp == NULL);
-			*remainingTime = atoi(temp);
-			if (timeout(*remainingTime) == 0) {
-				/* update new information */
-				//pause while loop for *remainingTime + 1 seconds
-				do { //to make sure previous product is out dated
-					if (timeout(1) == 0) {
-						do {
-							Writen(sockfdtime, "AC_GET_CURRENT_PRODUCT\n", 23);
-							clearString(recvline);
-							if (read(sockfdtime, recvline, MAXLINE) <= 0)
-								errorQuit();
-							getResponse(res,recvline);
-							temp = getValOfStr("val",res->message);
-						} while(temp == NULL);
-					}
-				} while (current_product == atoi(temp));
+			// cap nhat remaining time cho phien dau gia hien thoi
+			nanosleep(&tim,NULL);
+			sprintf(sendline,"AC_GET_PRODUCT_INFO val=\"%d\"\n",current_product);
+			Writen(sockfdtime, sendline, strlen(sendline));
+			clearString(recvline);
+			if (read(sockfdtime, recvline, MAXLINE) <= 0)
+				errorQuit();
+			getResponse(res,recvline);
+			temp = getValOfStr("remainingTime",res->header);
+			if (temp != NULL) {
+				*remainingTime = atoi(temp);
+			}
+			temp = getValOfStr("current_product",res->header);
+			if (temp != NULL) {
+				i = 2;
 				prev_product = current_product;
 				current_product = atoi(temp);
-				do {
-					sprintf(sendline,"AC_GET_PRODUCT_INFO val=\"%d\"\n",prev_product);
-					Writen(sockfdtime, sendline, strlen(sendline));
-					clearString(recvline);
-					if (read(sockfdtime, recvline, MAXLINE) <= 0)
-						errorQuit();
-					getResponse(res,recvline);
-					Fputs(res->message, stdout);
-				} while (strncmp(res->message,"NULL",strlen("NULL")) == 0 || res->b == false);
-				do {
-					if (timeout(2) == 0) {
-						printf("Getting new product info ....\n");
-						sprintf(sendline,"AC_GET_PRODUCT_INFO val=\"%d\"\n",current_product);
-						Writen(sockfdtime, sendline, strlen(sendline));
-						clearString(recvline);
-						if (read(sockfdtime, recvline, MAXLINE) <= 0)
-							errorQuit();
-						getResponse(res,recvline);
-						if (strncmp(res->message,"NULL",strlen("NULL")) != 0) {
-							Fputs(res->message, stdout);
-						}
-					}
-				} while (strncmp(res->message,"NULL",strlen("NULL")) == 0 || res->b == false);
 			}
+			/* if (timeout(0) == 0) { */
+				/* update new information */
+			if (print == true || i > 0) {
+				system("clear");
+				printf("%s\n",res->message);
+			}
+
+			/* } */
+			i > 0 ? i-- : i;
 		}
 
-	} else {
+	} else { //day la process parent
 		sockfd = Socket(AF_INET, SOCK_STREAM, 0);
 
 		bzero(&servaddr, sizeof(servaddr));
@@ -182,6 +171,14 @@ int main(int argc, char **argv)
 		}
 
 		/* biding */
+		// cai nay la phan chinh cua process nay
+		// nhan lenh tu ban phim roi send den server
+		// server nhan dc phan hoi lai
+		// client bat' bang ham read roi in ra
+		// cac command nhu:
+		// AC_LOGIN name="a"
+		// AC_BID val="15.00"
+		// AC_LOGOUT
 		while (Fgets(sendline, MAXLINE, stdin) != NULL) {
 			Writen(sockfd, sendline, strlen(sendline));
 			clearString(recvline);

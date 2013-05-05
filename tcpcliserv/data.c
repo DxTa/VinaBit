@@ -8,8 +8,7 @@
 //response from server
 typedef struct Response {
 	bool b;
-	char header[10][MAXLINE];
-	int cnt_header;
+	char header[MAXLINE];
 	char message[MAXLINE];
 } Response;
 
@@ -80,30 +79,20 @@ Action toAction(char* s) {
 Response* initResponse() {
 	Response *r;
 	r = (Response*)malloc(sizeof(Response));
-	r->cnt_header = 0;
 	return r;
 }
 
 void resetResponse(Response* r) {
 	int i,j;
 	r->b = false;
-	for (i=0; i<10; i++)
 		for (j=0;j<MAXLINE;j++)
-			r->header[i][j] = '\0';
-	r->cnt_header = 0;
+			r->header[j] = '\0';
 	for (j=0;j<MAXLINE;j++)
 		r->message[j] = '\0';
 }
 
-void addHeader(Response* r, char* h) {
-	strncpy(r->header[r->cnt_header],h,MAXLINE);
-	r->cnt_header += 1;
-}
-
 int responseToString(Response* r, char* buf) {
-	char header[MAXLINE*10];
-	sprintf(header," %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",r->header[0],r->header[1],r->header[2],r->header[3],r->header[4],r->header[5],r->header[6],r->header[7],r->header[8],r->header[9]);
-	sprintf(buf,"%s;%s;%s\n",r->b ? "true" : "false",header,r->message);
+	sprintf(buf,"%s; %s; %s\n",r->b ? "true" : "false",r->header,r->message);
 	return strlen(buf);
 }
 
@@ -112,18 +101,18 @@ void getResponse(Response* r,char* s) {
 	int count = 0;
 	resetResponse(r);
 
-	tok = strtok(s,",;");
+	tok = strtok(s,";");
 	while(tok != NULL) {
 		if (count == 0) {
 			if (strcmp(tok,"true") == 0)
 				r->b = true;
 			else r->b = false;
-		} else if (0 < count && count < 10) {
-			addHeader(r,strdup(tok));
-		} else if (count >= 10) {
+		} else if (count == 1) {
+			strcpy(r->header,strdup(tok));
+		} else if (count > 1) {
 			strcpy(r->message,strdup(tok));
 		}
-		tok=strtok(NULL,",;");
+		tok=strtok(NULL,";");
 		count++;
 	}
 	return;
@@ -138,13 +127,4 @@ char* getValOfStr(char* k,char* s) {
 	rs = match_regex(&regex,s);
 	regfree(&regex);
 	return rs;
-}
-
-int timeout ( int seconds )
-{
-	clock_t endwait;
-	endwait = clock () + seconds * CLOCKS_PER_SEC ;
-	while (clock() < endwait) {}
-
-	return  0;
 }
