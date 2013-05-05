@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 	if (argc != 2)
 		err_quit("usage: tcpcli <IPaddress>");
 
-	if ((childpid = Fork()) == 0) { //time counter
+	if ((childpid = Fork()) == 0) { //time counter (process con)
 		sockfdtime = Socket(AF_INET, SOCK_STREAM, 0);
 
 		bzero(&servaddr, sizeof(servaddr));
@@ -69,6 +69,9 @@ int main(int argc, char **argv)
 		Connect(sockfdtime, (SA *) &servaddr, sizeof(servaddr));
 
 		/* authenticate */
+		// do client co 2 ket noi den server (2process) nen ca 2 ket not nay can duoc login vao server
+		// process con nay se duoc login vao khi process me login vao truoc
+		// tuc la khi ton tai *isConnected = true
 		while (true) {
 			if (timeout(1) == 0) {
 				if (*isLoggedOut == true)
@@ -86,6 +89,8 @@ int main(int argc, char **argv)
 					break;
 			}
 		}
+
+		//sau khi login sau thi cung in thong tin product hien thoi request dc tu phia server
 		do {
 			if (timeout(1) == 0) {
 				Writen(sockfdtime, "AC_GET_CURRENT_PRODUCT\n", 23);
@@ -100,6 +105,7 @@ int main(int argc, char **argv)
 
 		/* time sync with server */
 		while(true) {
+			// cap nhat remaining time cho phien dau gia hien thoi
 			do {
 				if (timeout(1) == 0) {
 					Writen(sockfdtime, "AC_GET_REMAINING_TIME\n", 22);
@@ -113,7 +119,9 @@ int main(int argc, char **argv)
 			*remainingTime = atoi(temp);
 			if (timeout(*remainingTime) == 0) {
 				/* update new information */
-				//pause while loop for *remainingTime + 1 seconds
+				//pause while loop for *remainingTime seconds chinh luc pause nay thi la thoi gian cho client bid (o day la bid bang process parent)
+				//doan tiep theo nay se cap nhat current_product voi gia tri moi tu server
+				//doan do while nay theo ly thuyet thi chay 1 phat la dung luon nhung ma nhet vao do while de phong truong hop su co cac kieu
 				do { //to make sure previous product is out dated
 					if (timeout(1) == 0) {
 						do {
@@ -128,6 +136,8 @@ int main(int argc, char **argv)
 				} while (current_product == atoi(temp));
 				prev_product = current_product;
 				current_product = atoi(temp);
+
+				//doan tiep request thong tin ket qua dau gia cho product hien thoi (dau gia xong cai nay roi)
 				do {
 					sprintf(sendline,"AC_GET_PRODUCT_INFO val=\"%d\"\n",prev_product);
 					Writen(sockfdtime, sendline, strlen(sendline));
@@ -137,6 +147,7 @@ int main(int argc, char **argv)
 					getResponse(res,recvline);
 					Fputs(res->message, stdout);
 				} while (strncmp(res->message,"NULL",strlen("NULL")) == 0 || res->b == false);
+				// lay product moi' tu phia server, 2s check 1 lan, check den khi ra product thi thoi
 				do {
 					if (timeout(2) == 0) {
 						printf("Getting new product info ....\n");
@@ -154,7 +165,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-	} else {
+	} else { //day la process parent
 		sockfd = Socket(AF_INET, SOCK_STREAM, 0);
 
 		bzero(&servaddr, sizeof(servaddr));
@@ -182,6 +193,14 @@ int main(int argc, char **argv)
 		}
 
 		/* biding */
+		// cai nay la phan chinh cua process nay
+		// nhan lenh tu ban phim roi send den server
+		// server nhan dc phan hoi lai
+		// client bat' bang ham read roi in ra
+		// cac command nhu:
+		// AC_LOGIN name="a"
+		// AC_BID val="15.00"
+		// AC_LOGOUT
 		while (Fgets(sendline, MAXLINE, stdin) != NULL) {
 			Writen(sockfd, sendline, strlen(sendline));
 			clearString(recvline);

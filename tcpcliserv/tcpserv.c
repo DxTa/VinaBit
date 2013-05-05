@@ -31,11 +31,11 @@ typedef struct ConnectedUsers {
 	int length;
 } ConnectedUsers;
 
-ConnectedUsers* cus;
-Product* products;
-int* current_product;
-int* noCli;
-int* remainingTime;
+ConnectedUsers* cus; // luu thong tin cac user da tung dang nhap vao server
+Product* products; // cac' product
+int* current_product; // id product hien thoi
+int* noCli; // so luong ket not den server
+int* remainingTime; //thoi gian con lai cho phien dau gia hien thoi
 
 int addNewConnectedUser(char name[50]) {
 	strcpy(cus->connectedUsers[cus->length].name,name);
@@ -74,17 +74,18 @@ void doprocessing (int sock)
 	/* printf("------%d--------\n",*noCli); */
 	while (((n = read(sock, buf, MAXLINE)) > 0 || (n < 0 && errno == EINTR)))
 	{
+		// truoc khi switch thi clear cac bien de tranh loi
 		now = time(NULL);
 		resetResponse(res);
 		clearString(res_str);
 		clearString(res->message);
 		switch(toAction(buf)) {
 			case AC_LOGIN:
-				if((temp = getValOfStr("name",buf)) == NULL)
+				if((temp = getValOfStr("name",buf)) == NULL) //wrong format
 					goto LINE199;
 				id = findConnectedUserByName(temp);
 				if (id<0)
-					id = addNewConnectedUser(temp);
+					id = addNewConnectedUser(temp); // khong tim thay thi tao user moi
 				if (id >= 0) {
 					isLoggedIn = true;
 					res->b = true;
@@ -99,25 +100,25 @@ void doprocessing (int sock)
 					} else {
 						sprintf(res_str,"\nDo not have any product to bid!\n");
 					}
-					strcpy(res->message,res_str);
+					strcpy(res->message,res_str); // cap nhat res->message
 					clearString(res_str);
 				}
 				else res->b = false;
-				len = responseToString(res,res_str);
-				write(sock, res_str, len);
+				len = responseToString(res,res_str); //chuyen res sang string, ham tra lai la length cua string day
+				write(sock, res_str, len); //gui?
 				break;
 			case AC_LOGOUT:
-				if (id < 0) break;
+				if (id < 0) break; // check dang nhap chua, chua co id chua dang nhap ko dc dung action nay
 				printf("%s is disconnected\n",cus->connectedUsers[id].name);
 				res->b = true;
 				strcpy(res->message,"DISCONNECTED");
 				isLoggedIn = false;
 				len = responseToString(res,res_str);
 				write(sock, res_str, len);
-				return;
+				return; //logout thu rung function
 			case AC_BID:
 				if (id < 0) break;
-				if((temp = getValOfStr("val",buf)) == NULL)
+				if((temp = getValOfStr("val",buf)) == NULL)  // wrong format
 					goto LINE199;
 				if (*current_product < PRODUCT_NO) {
 					mbid = atof(temp)- atof(products[*current_product].current_bid);
@@ -250,15 +251,17 @@ int main(int argc, char **argv)
 	noCli = shmat(noCli_shm_id,NULL,0);
 	int remainingTime_shm_id = shmget(IPC_PRIVATE,sizeof(int),0600);
 	remainingTime = shmat(remainingTime_shm_id,NULL,0);
-	time_t now,start;
 
+	time_t now,start;
 	int					listenfd, connfd, on;
 	pid_t				childpid;
 	socklen_t			clilen;
 	struct sockaddr_in	cliaddr, servaddr;
 	void				sig_chld(int);
 
-	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
+	listenfd = Socket(AF_INET, SOCK_STREAM, 0);  // khoi tao socket listening
+	// ham tiep theo de cho phep su dung lai address
+	// tranh loi already in use
 	setsockopt( listenfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on) );
 
 	bzero(&servaddr, sizeof(servaddr));
@@ -272,7 +275,7 @@ int main(int argc, char **argv)
 
 	Signal(SIGCHLD, sig_chld);	/* must call waitpid() */
 
-	initBid();
+	initBid(); // khoi tao cac bien cua server dau gia
 
 	if ( (childpid = Fork()) == 0) { //time counter
 		start = time(NULL);
@@ -284,25 +287,28 @@ int main(int argc, char **argv)
 				if (*remainingTime < 0) { //change to next product
 					(*current_product)++;
 					if (*current_product < PRODUCT_NO) {
+						// cap nhat remaining time moi
 						*remainingTime = products[*current_product].duration;
 					}
 				}
 				if (*current_product >= PRODUCT_NO)
-					exit(0);
+					exit(0); // het san pham de dau gia ket thuc process nay, co the viet them de cho tat ca? server cung dc
 			}
 		}
 	} else {
 		for ( ; ; ) {
 			clilen = sizeof(cliaddr);
+			// doan if tiep la de listing tu socket listenfd
 			if ( (connfd = accept(listenfd, (SA *) &cliaddr, &clilen)) < 0) {
 				if (errno == EINTR)
 					continue;		/* back to for() */
 				else
 					err_sys("accept error");
 			}
+			// listen dc roi thi tao process con de xu ly
 			if ( (childpid = Fork()) == 0) {	/* child process */
 				Close(listenfd);	/* close listening socket */
-				doprocessing(connfd);	// process the request
+				doprocessing(connfd);	// processing
 				exit(0);
 			}
 			Close(connfd);			/* parent closes connected socket */
