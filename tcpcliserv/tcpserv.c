@@ -221,19 +221,19 @@ int initBid() {
 	products[0].isSold = false;
 	strcpy(products[0].start_bid,"10.00");
 	strcpy(products[0].min_bid,"4.00");
-	strcpy(products[0].max_bid,"100.00");
+	strcpy(products[0].max_bid,"9999.00");
 	strcpy(products[0].current_bid,"10.00");
 	products[0].userId = -1;
-	products[0].duration = 30;
+	products[0].duration = 50;
 
 	strcpy(products[1].name,"cafe racer");
 	products[1].isSold = false;
 	strcpy(products[1].start_bid,"10.00");
 	strcpy(products[1].min_bid,"4.00");
-	strcpy(products[1].max_bid,"100.00");
+	strcpy(products[1].max_bid,"9999.00");
 	strcpy(products[1].current_bid,"10.00");
 	products[1].userId = -1;
-	products[1].duration = 30;
+	products[1].duration = 50;
 
 	*current_product = 0;
 	*noCli = 0;
@@ -261,6 +261,7 @@ int main(int argc, char **argv)
 	socklen_t			clilen;
 	struct sockaddr_in	cliaddr, servaddr;
 	void				sig_chld(int);
+	char start_c = '\0';
 
 	listenfd = Socket(AF_INET, SOCK_STREAM, 0);  // khoi tao socket listening
 	// ham tiep theo de cho phep su dung lai address
@@ -288,6 +289,11 @@ int main(int argc, char **argv)
 		tim.tv_nsec = 0;
 		while(true){
 			nanosleep(&tim,NULL);
+			if(start_c == '\0') {
+				printf("Press any key to start Auction House ...");
+				scanf("%c",&start_c);
+				continue;
+			}
 			printf("----%d----\n",*remainingTime);
 			(*remainingTime)--;
 			if (*remainingTime < 0) { //change to next product

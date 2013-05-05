@@ -138,7 +138,6 @@ int main(int argc, char **argv)
 				system("clear");
 				printf("%s\n",res->message);
 			}
-
 			/* } */
 			i > 0 ? i-- : i;
 		}
@@ -154,6 +153,7 @@ int main(int argc, char **argv)
 		Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
 
 		/* authenticate */
+		Fputs("-----------------\nCommand : ",stdout);
 		while (Fgets(sendline, MAXLINE, stdin) != NULL) {
 
 			Writen(sockfd, sendline, strlen(sendline));
@@ -163,6 +163,7 @@ int main(int argc, char **argv)
 				errorQuit();
 			getResponse(res,recvline);
 			Fputs(res->message, stdout);
+			Fputs("-----------------\nCommand : ",stdout);
 			if (res->b == true) {
 				strcpy(name,getValOfStr("name",sendline));
 				*isConnected = true;
@@ -186,6 +187,7 @@ int main(int argc, char **argv)
 				errorQuit();
 			getResponse(res,recvline);
 			Fputs(res->message, stdout);
+			Fputs("-----------------\nCommand : ",stdout);
 			if (strncmp(res->message,"DISCONNECTED",strlen("DISCONNECTED")) == 0)
 				break;
 			if (res->b == false)
