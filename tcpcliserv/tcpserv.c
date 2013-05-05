@@ -9,7 +9,7 @@
 
 #define INTERVAL 10
 #define MAX_USER 50
-#define PRODUCT_NO 1
+#define PRODUCT_NO 2
 
 typedef struct Product {
 	char name[50];
@@ -212,6 +212,7 @@ LINE199:
 
 int initBid() {
 	cus->length = 0;
+
 	strcpy(products[0].name,"fixie");
 	products[0].isSold = false;
 	strcpy(products[0].start_bid,"10.00");
@@ -220,6 +221,16 @@ int initBid() {
 	strcpy(products[0].current_bid,"10.00");
 	products[0].userId = -1;
 	products[0].duration = 30;
+
+	strcpy(products[1].name,"cafe racer");
+	products[1].isSold = false;
+	strcpy(products[1].start_bid,"10.00");
+	strcpy(products[1].min_bid,"4.00");
+	strcpy(products[1].max_bid,"100.00");
+	strcpy(products[1].current_bid,"10.00");
+	products[1].userId = -1;
+	products[1].duration = 30;
+
 	*current_product = 0;
 	*noCli = 0;
 
@@ -265,16 +276,16 @@ int main(int argc, char **argv)
 
 	if ( (childpid = Fork()) == 0) { //time counter
 		start = time(NULL);
-		*remainingTime = products[*current_product].duration - (now - start);
+		*remainingTime = products[*current_product].duration;
 		while(true){
 			if (timeout(1) == 0) { //interval 1 second
-				now = time(NULL);
-				int rmt = products[*current_product].duration - (now - start);
-				if (rmt < 0) { //change to next product
+				printf("----%d----\n",*remainingTime);
+				(*remainingTime)--;
+				if (*remainingTime < 0) { //change to next product
 					(*current_product)++;
-					start = time(NULL);
-				} else {
-					*remainingTime = rmt;
+					if (*current_product < PRODUCT_NO) {
+						*remainingTime = products[*current_product].duration;
+					}
 				}
 				if (*current_product >= PRODUCT_NO)
 					exit(0);
