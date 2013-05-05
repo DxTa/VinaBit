@@ -14,9 +14,7 @@
 typedef struct Product {
 	char name[50];
 	bool isSold;
-	char start_bid[50];
 	char min_bid[50];
-	char max_bid[50];
 	char current_bid[50];
 	int duration;
 	int userId;
@@ -89,10 +87,8 @@ void doprocessing (int sock)
 					isLoggedIn = true;
 					res->b = true;
 					if (*current_product < PRODUCT_NO) {
-						sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
-								products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
-								products[*current_product].max_bid, products[*current_product].current_bid,
-								cus->length,
+						sprintf(res_str,"\nCurrent Product is %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent Winner: %s\nTime Remaining: %ld\n",
+								products[*current_product].name, products[*current_product].current_bid,cus->length,
 								products[*current_product].userId == -1 ? "NULL" : cus->connectedUsers[products[*current_product].userId].name,
 								*remainingTime
 							   );
@@ -121,15 +117,21 @@ void doprocessing (int sock)
 					goto LINE199;
 				if (*current_product < PRODUCT_NO) {
 					mbid = atof(temp)- atof(products[*current_product].current_bid);
-					if (atof(products[*current_product].min_bid) < mbid && mbid < atof(products[*current_product].max_bid)) {
-						strcpy(products[*current_product].current_bid,temp);
-						products[*current_product].userId = id;
+					if(atof(products[*current_product].min_bid) <= mbid ) {
+						if (atof(temp) > atof(products[*current_product].current_bid)) {
+							strcpy(products[*current_product].current_bid,temp);
+							products[*current_product].userId = id;
+						} else {
+							res->b = true;
+							sprintf(res_str,"\nYour bid is lower than than the current bid");
+						}
+					} else {
+						res->b = true;
+						sprintf(res_str,"\nYour bid can not be lower than the minimum bid");
 					}
 					res->b = true;
-					sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
-							products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
-							products[*current_product].max_bid, products[*current_product].current_bid,
-							cus->length,
+					sprintf(res_str,"\nCurrent Product is %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
+							products[*current_product].name, products[*current_product].current_bid,cus->length,
 							products[*current_product].userId == -1 ? "NULL" : cus->connectedUsers[products[*current_product].userId].name,
 							*remainingTime
 						   );
@@ -138,28 +140,6 @@ void doprocessing (int sock)
 					sprintf(res_str,"\nDo not have any product to bid!\n");
 				}
 
-				strcpy(res->message,res_str);
-				clearString(res_str);
-				len = responseToString(res,res_str);
-				write(sock, res_str, len);
-				break;
-			case AC_GET_REMAINING_TIME:
-				if (id < 0) break;
-				if (*current_product < PRODUCT_NO) {
-					sprintf(res_str,"val=\"%d\"",*remainingTime);
-				} else {
-					sprintf(res_str,"\nDo not have any product to bid!\n");
-				}
-				res->b = true;
-				strcpy(res->message,res_str);
-				clearString(res_str);
-				len = responseToString(res,res_str);
-				write(sock, res_str, len);
-				break;
-			case AC_GET_CURRENT_PRODUCT:
-				if (id < 0) break;
-				sprintf(res_str,"val=\"%d\"",*current_product);
-				res->b = true;
 				strcpy(res->message,res_str);
 				clearString(res_str);
 				len = responseToString(res,res_str);
@@ -175,18 +155,14 @@ void doprocessing (int sock)
 					sprintf(res_str,"NULL\n");
 				} else {
 					if (i == *current_product) {
-						sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
-								products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
-								products[*current_product].max_bid, products[*current_product].current_bid,
-								cus->length,
+						sprintf(res_str,"\nCurrent Product is %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
+								products[*current_product].name, products[*current_product].current_bid,cus->length,
 								products[*current_product].userId == -1 ? "NULL" : cus->connectedUsers[products[*current_product].userId].name,
 								*remainingTime
 							   );
-					} else {
-						sprintf(res_str,"\nProduct name: %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent Winner: %s\n",
-								products[i].name,products[i].start_bid,products[i].min_bid,
-								products[i].max_bid, products[i].current_bid,
-								cus->length,
+					} else if(i <= *current_product) {
+						sprintf(res_str,"\nProduct name: %s\nWinner bid: %s\nNumber of bidder: %d\nWinner: %s\n",
+								products[i].name,products[i].current_bid,cus->length,
 								products[i].userId == -1 ? "NULL" : cus->connectedUsers[products[i].userId].name
 							   );
 					}
@@ -214,9 +190,7 @@ int initBid() {
 	cus->length = 0;
 	strcpy(products[0].name,"fixie");
 	products[0].isSold = false;
-	strcpy(products[0].start_bid,"10.00");
 	strcpy(products[0].min_bid,"4.00");
-	strcpy(products[0].max_bid,"100.00");
 	strcpy(products[0].current_bid,"10.00");
 	products[0].userId = -1;
 	products[0].duration = 30;
