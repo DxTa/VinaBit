@@ -36,6 +36,7 @@ Product* products; // cac' product
 int* current_product; // id product hien thoi
 int* noCli; // so luong ket not den server
 int* remainingTime; //thoi gian con lai cho phien dau gia hien thoi
+bool* start_auction; //thoi gian con lai cho phien dau gia hien thoi
 
 int addNewConnectedUser(char name[50]) {
 	strcpy(cus->connectedUsers[cus->length].name,name);
@@ -83,7 +84,7 @@ void doprocessing (int sock)
 		switch(toAction(buf)) {
 			case AC_LOGIN:
 				if((temp = getValOfStr("name",buf)) == NULL) //wrong format
-					goto LINE199;
+					goto LINE208;
 				id = findConnectedUserByName(temp);
 				if (id<0)
 					id = addNewConnectedUser(temp); // khong tim thay thi tao user moi
@@ -120,26 +121,30 @@ void doprocessing (int sock)
 			case AC_BID:
 				if (id < 0) break;
 				if((temp = getValOfStr("val",buf)) == NULL)  // wrong format
-					goto LINE199;
-				if (*current_product < PRODUCT_NO) {
-					mbid = atof(temp)- atof(products[*current_product].current_bid);
-					if (atof(products[*current_product].min_bid) < mbid && mbid < atof(products[*current_product].max_bid)) {
-						strcpy(products[*current_product].current_bid,temp);
-						products[*current_product].userId = id;
-					}
+					goto LINE208;
+				if (*start_auction == false) {
 					res->b = true;
-					sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
-							products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
-							products[*current_product].max_bid, products[*current_product].current_bid,
-							cus->length,
-							products[*current_product].userId == -1 ? "NULL" : cus->connectedUsers[products[*current_product].userId].name,
-							*remainingTime
-						   );
+					sprintf(res_str,"\nAution House hasn't started yet.\n");
 				} else {
-					res->b = true;
-					sprintf(res_str,"\nDo not have any product to bid!\n");
+					if (*current_product < PRODUCT_NO) {
+						mbid = atof(temp)- atof(products[*current_product].current_bid);
+						if (atof(products[*current_product].min_bid) < mbid && mbid < atof(products[*current_product].max_bid)) {
+							strcpy(products[*current_product].current_bid,temp);
+							products[*current_product].userId = id;
+						}
+						res->b = true;
+						sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
+								products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
+								products[*current_product].max_bid, products[*current_product].current_bid,
+								cus->length,
+								products[*current_product].userId == -1 ? "NULL" : cus->connectedUsers[products[*current_product].userId].name,
+								*remainingTime
+							   );
+					} else {
+						res->b = true;
+						sprintf(res_str,"\nDo not have any product to bid!\n");
+					}
 				}
-
 				strcpy(res->message,res_str);
 				clearString(res_str);
 				len = responseToString(res,res_str);
@@ -170,7 +175,7 @@ void doprocessing (int sock)
 			case AC_GET_PRODUCT_INFO:
 				if (id < 0) break;
 				if((temp = getValOfStr("val",buf)) == NULL)
-					goto LINE199;
+					goto LINE208;
 				res->b = true;
 				i = atoi(temp);
 				if (i < 0 || i >= PRODUCT_NO) {
@@ -200,7 +205,7 @@ void doprocessing (int sock)
 				len = responseToString(res,res_str);
 				write(sock, res_str, len);
 				break;
-LINE199:
+LINE208:
 			default:
 				res->b = false;
 				strcpy(res->message,"your message is in wrong format");
@@ -237,6 +242,7 @@ int initBid() {
 
 	*current_product = 0;
 	*noCli = 0;
+	*start_auction = false;
 
 	return 0;
 }
@@ -254,6 +260,8 @@ int main(int argc, char **argv)
 	noCli = shmat(noCli_shm_id,NULL,0);
 	int remainingTime_shm_id = shmget(IPC_PRIVATE,sizeof(int),0600);
 	remainingTime = shmat(remainingTime_shm_id,NULL,0);
+	int start_auction_shm_id = shmget(IPC_PRIVATE,sizeof(int),0600);
+	start_auction = shmat(start_auction_shm_id,NULL,0);
 
 	time_t now,start;
 	int					listenfd, connfd, on;
@@ -261,7 +269,6 @@ int main(int argc, char **argv)
 	socklen_t			clilen;
 	struct sockaddr_in	cliaddr, servaddr;
 	void				sig_chld(int);
-	char start_c = '\0';
 
 	listenfd = Socket(AF_INET, SOCK_STREAM, 0);  // khoi tao socket listening
 	// ham tiep theo de cho phep su dung lai address
@@ -287,13 +294,11 @@ int main(int argc, char **argv)
 		struct timespec tim;
 		tim.tv_sec = 1;
 		tim.tv_nsec = 0;
+		printf("Press any key to start Auction House ...");
+		getchar();
+		*start_auction = true;
 		while(true){
 			nanosleep(&tim,NULL);
-			if(start_c == '\0') {
-				printf("Press any key to start Auction House ...");
-				scanf("%c",&start_c);
-				continue;
-			}
 			printf("----%d----\n",*remainingTime);
 			(*remainingTime)--;
 			if (*remainingTime < 0) { //change to next product
