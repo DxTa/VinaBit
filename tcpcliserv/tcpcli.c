@@ -196,12 +196,13 @@ int main(int argc, char **argv)
 			getResponse(res,recvline);
 			system("clear");
 			Fputs(res->message, stdout);
-			Fputs("-----------------\nCommand : ",stdout);
 			if (strstr(res->message,"DISCONNECTED") != NULL) {
 				break;
 			}
 			if (res->b == false)
 				printf("Your bid is failed!\n");
+			Fputs("-----------------\nCommand : ",stdout);
+			fflush(stdout);
 		}
 	}
 	*isLoggedOut = true;

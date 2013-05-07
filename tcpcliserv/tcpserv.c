@@ -92,7 +92,7 @@ void doprocessing (int sock)
 					isLoggedIn = true;
 					res->b = true;
 					if (*current_product < PRODUCT_NO) {
-						sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
+						sprintf(res_str,"\n---------- %s ---------\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
 								products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
 								products[*current_product].max_bid, products[*current_product].current_bid,
 								cus->length,
@@ -133,7 +133,7 @@ void doprocessing (int sock)
 							products[*current_product].userId = id;
 						}
 						res->b = true;
-						sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
+						sprintf(res_str,"\n---------- %s ----------\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
 								products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
 								products[*current_product].max_bid, products[*current_product].current_bid,
 								cus->length,
@@ -182,7 +182,7 @@ void doprocessing (int sock)
 					sprintf(res_str,"Product is empty\n");
 				} else {
 					if (i == *current_product) {
-						sprintf(res_str,"\nCurrent Product is %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
+						sprintf(res_str,"\n--------%s--------\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent User: %s\nTime Remaining: %ld\n",
 								products[*current_product].name,products[*current_product].start_bid,products[*current_product].min_bid,
 								products[*current_product].max_bid, products[*current_product].current_bid,
 								cus->length,
@@ -191,7 +191,7 @@ void doprocessing (int sock)
 							   );
 						sprintf(res->header,"remainingTime=\"%d\"",*remainingTime);
 					} else {
-						sprintf(res_str,"\nProduct name: %s\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent Winner: %s\n",
+						sprintf(res_str,"\n--------- %s ---------\nstart bid: %s\nmin bid: %s\nmax bid: %s\ncurrent bid: %s\nNumber of bidder: %d\nCurrent Winner: %s\n",
 								products[i].name,products[i].start_bid,products[i].min_bid,
 								products[i].max_bid, products[i].current_bid,
 								cus->length,
@@ -229,7 +229,7 @@ int initBid() {
 	strcpy(products[0].max_bid,"9999.00");
 	strcpy(products[0].current_bid,"10.00");
 	products[0].userId = -1;
-	products[0].duration = 50;
+	products[0].duration = 60;
 
 	strcpy(products[1].name,"cafe racer");
 	products[1].isSold = false;
@@ -238,7 +238,7 @@ int initBid() {
 	strcpy(products[1].max_bid,"9999.00");
 	strcpy(products[1].current_bid,"10.00");
 	products[1].userId = -1;
-	products[1].duration = 50;
+	products[1].duration = 60;
 
 	*current_product = 0;
 	*noCli = 0;
